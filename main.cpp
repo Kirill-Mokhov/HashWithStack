@@ -8,47 +8,73 @@ const int ERROR_KEY_IS_NOT_UNIQUE = -3;
 const int ERROR_TABLE_IS_EMPTY = -4;
 
 struct Record {
-    int key{};
+    int key;
     string fullName;
 };
 
 class Stack {
-private:
+public:
     Record data;
-    Stack *Next,*Head;
+    Stack *Next, *Head;
 public:
     Stack() {
         Head = Next = nullptr;
     }
 
+    explicit Stack(Stack *copy) {
+        Head = copy->Head;
+        Next = copy->Next;
+        data = copy->data;
+        auto *dubStack = this;
+        while (!dubStack->isStackEmpty()) {
+            copy->push(dubStack->pop());
+        }
+    }
+
+
+    Stack dubStack(Stack &stack) {
+        auto *dubStack = this;
+        while (!dubStack->isStackEmpty()) {
+            stack.push(dubStack->pop());
+        }
+        return stack;
+    }
+
     void push(const Record& record) {
-        auto *temp = new Stack;
-        temp->data.key = record.key;
-        temp->data.fullName = record.fullName;
-        temp->Next = Head;
-        Head = temp;
+        if (Head == nullptr && Next == nullptr) {
+            data.key = record.key;
+            data.fullName = record.fullName;
+            Next = nullptr;
+            Head = this;
+        }
+        else {
+            auto *temp = new Stack;
+            temp->data.key = record.key;
+            temp->data.fullName = record.fullName;
+            temp->Next = Head;
+            Head = temp;
+        }
     }
 
     Record pop() {
         if (Head == nullptr) {
             cout << "ERROR: Stack empty!" << endl;
-            Record errorRecord = Record();
-            return errorRecord;
         }
-        Record popRecord;
-        popRecord.key = Head->data.key;
-        popRecord.fullName = Head->data.fullName;
-        Stack *CurHead = Head->Next;
-        delete Head;
-        Head = CurHead;
-        return popRecord;
+        else {
+            Record popRecord;
+            popRecord.key = Head->data.key;
+            popRecord.fullName = Head->data.fullName;
+            Stack *CurHead = Head->Next;
+            Head = CurHead;
+            return popRecord;
+        }
     }
 
     Record searchAndPop(const Record& record){
         Record popRecord = Record();
         auto *forBusting = new Stack;
         bool search = false;
-        while ((Head != nullptr) && !search) {
+        while ((!isStackEmpty()) && !search) {
             if ((Head->data.key == record.key) && (Head->data.fullName == record.fullName)){
                 search = true;
                 popRecord = pop();
@@ -57,7 +83,7 @@ public:
                 forBusting->push(pop());
             }
         }
-        while (forBusting->Head != nullptr) {
+        while (!forBusting->isStackEmpty()) {
             push(forBusting->pop());
         }
         if (!search)
@@ -69,7 +95,7 @@ public:
         int search_record = 0;
         auto *forBusting = new Stack;
         bool search = false;
-        while ((Head != nullptr) && !search) {
+        while ((!isStackEmpty()) && !search) {
             if ((Head->data.key == record.key) && (Head->data.fullName == record.fullName)){
                 search = true;
                 forBusting->push(pop());
@@ -78,7 +104,7 @@ public:
                 forBusting->push(pop());
             }
         }
-        while (forBusting->Head != nullptr) {
+        while (!forBusting->isStackEmpty()) {
             push(forBusting->pop());
         }
         if (!search)
@@ -103,15 +129,6 @@ public:
         }
         return empty;
     }
-
-    Stack dubStack(Stack &stack) {
-        auto *dubStack = new Stack;
-        while (!dubStack->isStackEmpty()) {
-            stack.push(dubStack->pop());
-        }
-        return stack;
-    }
-
 
     Stack &operator+(const Stack &right) {
         Stack *result = this;
@@ -193,186 +210,105 @@ public:
         return 0;
     }
 
-    void initialize(unsigned int sizeNewTable) {
-        stack = new Stack[sizeNewTable];
-        status = new bool[sizeNewTable];
-        memset(status, 0, (size_t) sizeNewTable);
+    void initialize(unsigned int size) {
+        stack = new Stack[size];
+        status = new bool[size];
+        memset(status, 0, (size_t) size);
     }
 
-    HashTable &operator+(const Record &right) {
-        HashTable *result = this;
-        result->add(right);
-        return *result;
-    }
-
-    HashTable &operator+(const HashTable &right) {
-        auto *result = new HashTable(this->size);
-
-        for (int i = 0; i < right.size; i++) {
-            if (!this->stack[i].isStackEmpty() || !right.stack[i].isStackEmpty()) {
-                result->stack[i] = this->stack[i] + right.stack[i];
-                result->status[i] = true;
-            }
-        }
-        return *result;
-    }
-
-        HashTable &operator=(HashTable const &right) {
-            auto *result = new HashTable(this->size);
-
-            delete[] this->stack;
-            delete[] this->status;
-
-            initialize(this->size);
-            countOfElem = 0;
-
-            for (int i = 0; i < right.size; i++) {
-                if (right.status[i]) {
-                    result->stack[i].dubStack(right.stack[i]);
-                }
-            }
+    HashTable &operator=(const HashTable &right) {
+        if (this == &right) {
             return *this;
         }
 
-        friend std::ostream &operator<<(std::ostream &out, HashTable &table) {
-            out << "---------------------------------------------------------------------------------" << endl;
-            for (size_t i = 0; i < table.size; i++) {
-                if (table.status[i] == 1) {
-                    out << " | " << i << " | ";
-                    table.stack[i].print();
-                    out << " | " << endl;
+        delete[] this->stack;
+        delete[] this->status;
+
+        initialize(this->size);
+        countOfElem = 0;
+
+        for (size_t i = 0; i < right.size; i++) {
+            if (right.status[i]) {
+                Stack popStackRight(right.stack[i]);
+                while (!popStackRight.isStackEmpty()){
+                    this->add(popStackRight.pop());
                 }
             }
-            out << "---------------------------------------------------------------------------------" << endl;
-            out << "Элементов в таблице: \"" << table.countOfElem << "\"." << endl;
         }
+        return *this;
+    }
 
-    };
+    HashTable &operator+(const Record &right) {
+        this->add(right);
+        return *this;
+    }
+
+    HashTable &operator+(const HashTable &right) {
+        for (int i = 0; i < right.size; i++) {
+            if (right.status[i]) {
+                Stack popStack(right.stack[i]);
+                while (!popStack.isStackEmpty()) {
+                    this->add(popStack.pop());
+                }
+            }
+        }
+        return *this;
+    }
+
+
+    friend std::ostream &operator<<(std::ostream &out, HashTable &table) {
+        out << "---------------------------------------------------------------------------------" << endl;
+        for (size_t i = 0; i < table.size; i++) {
+            if (table.status[i] == 1) {
+                out << " | " << i << " | ";
+                table.stack[i].print();
+                out << " | " << endl;
+            }
+        }
+        out << "---------------------------------------------------------------------------------" << endl;
+        out << "Элементов в таблице: \"" << table.countOfElem << "\"." << endl;
+    }
+
+};
 
 int main() {
-    HashTable table(30);
+    HashTable table(10);
     Record record;
 
     record.key = 1009;
     record.fullName = "Kirill Mokhovichenko10";
 
-    for (int i = 0; i < 8; i++) {
-
+    for (int i = 0; i < 4; i++) {
         table.add(record);
         record.key = record.key + 1000 - 1;
         record.fullName[0] += 1;
-
     }
-
     cout << table;
 
-    for (int i = 0; i < 8; i++) {
-
-
-        table.deleteRecord(record);
-        record.key = record.key - 2000 + 2;
-        record.fullName[0] -= 2;
-
-    }
-
-    cout << table;
-
-
-    record.key = 1119;
-    record.fullName = "Kirill Mokhovichenko10";
-
-    for (int i = 0; i < 10; i++) {
-
-        table.add(record);
-        record.key = record.key + 1000 - 1;
+    for (int i = 0; i < 5; i++) {
+        table + record;
+        record.key = record.key + 1234 - 1;
         record.fullName[0] += 1;
-
     }
+    cout << table;
+
+    HashTable table2(5);
+
+    table2 = table;
+
+    cout << table2;
 
     cout << table;
 
+    table2 + table;
 
-    record.key = 1009;
-    record.fullName = "Kirill Mokhovichenko10";
-
-    for (int i = 0; i < 8; i++) {
-
-        table.add(record);
-        record.key = record.key + 1000 - 1;
-        record.fullName[0] += 1;
-
-    }
+    cout << table2;
 
     cout << table;
 
-
-    for (int i = 0; i < 8; i++) {
-        cout << "del " << record.fullName << " " << record.key << endl;
-
-        table.deleteRecord(record);
-        record.key = record.key - 1000 + 1;
-        record.fullName[0] -= 1;
-
-    }
-
-    cout << table;
-
-
-    record.key = 1109;
-    record.fullName = "Kirill";
-
-    for (int i = 0; i < 8; i++) {
-
-        table.add(record);
-        record.key = record.key + 1000 - 1;
-        record.fullName[0] += 1;
-
-    }
-
-    cout << table;
-
-    record.key = 32414;
-    record.fullName = "Sasha";
-    table + record;
-    cout << table;
-
-    record.key = 23144;
-    record.fullName = "Nikolai";
-    table + record;
-    cout << table;
-
-    HashTable table1 = table;
+    HashTable table1 = table2 + table2;
 
     cout << table1;
-    record.key = 24341;
-    record.fullName = "Nastia";
-    table1 + record;
 
-    cout << table1;
-    cout << table;
-
-    HashTable table3(5);
-    HashTable table4(6);
-
-    for (int i = 0; i < 8; i++) {
-        table3.add(record);
-        record.key = record.key + 1000 - 1;
-        record.fullName[0] += 1;
-    }
-
-    cout << table3;
-
-    record.key = 10000;
-    for (int i = 0; i < 8; i++) {
-        table4.add(record);
-        record.key = record.key + 1000 - 1;
-        record.fullName[0] += 1;
-    }
-
-    cout << table4;
-
-    HashTable table5 = table4 + table3;
-
-    cout << table5;
-
+    return 0;
 }
