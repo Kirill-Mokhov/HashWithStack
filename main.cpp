@@ -187,7 +187,7 @@ public:
         stack[hashFunction(record.key)].push(record);
         status[hashFunction(record.key)] = true;
         countOfElem++;
-        cout << "Запись \"" << record.key << " : " << record.fullName << "\" успешно добавленна!" << endl;
+        cout << "Запись \"" << record.key << " : " << record.fullName << "\" успешно добавленна в ячейку : \""<< hashFunction(record.key) << "\"!" << endl;
         return 0;
     }
 
@@ -280,7 +280,7 @@ int main() {
 
     for (int i = 0; i < 4; i++) {
         table.add(record);
-        record.key = record.key + 1000 - 1;
+        record.key = record.key * i + 14325 - 1;
         record.fullName[0] += 1;
     }
     cout << table;
@@ -297,6 +297,14 @@ int main() {
     table2 = table;
 
     cout << table2;
+
+    cout << table;
+
+    for (int i = 0; i < 7; i++) {
+        table.deleteRecord(record);
+        record.key = record.key - 1234 + 1;
+        record.fullName[0] -= 1;
+    }
 
     cout << table;
 
